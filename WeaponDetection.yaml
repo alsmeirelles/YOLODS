@@ -1,0 +1,13 @@
+train: ./WeaponsDetection/train/images
+val: ./WeaponsDetection/valid/images
+test: ./WeaponsDetection/test/images
+
+nc: 2
+names: ['Blade', 'Gun']
+
+roboflow:
+  workspace: knowledgeflex-technologies-pvtltd
+  project: weapondetection-fxke2
+  version: 20
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/knowledgeflex-technologies-pvtltd/weapondetection-fxke2/dataset/20
