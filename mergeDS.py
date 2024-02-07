@@ -67,7 +67,7 @@ if __name__ == "__main__":
     parser.add_argument('-p', dest='perc', type=float,
         help='Merge X% of the target dataset into the base set (Default: 100%)', default=1.0,required=False)
     parser.add_argument('-bs', dest='base', type=str,
-        help='Base dataset path', default='',required=True)
+        help='Base dataset path, to which target will be merged into', default='',required=True)
     parser.add_argument('-target', dest='target', type=str, default='',
         help='Target dataset path.',required=True)
     parser.add_argument('-classes', dest='classes', type=json.loads, default=synms,
