@@ -44,7 +44,7 @@ def Merge(config):
                 sl = line.split(' ')
                 cl = target_service["names"][int(sl[0])].lower()
                 if len(sl) > 5: #Discard odd annotations
-                    print(f"Annotation has wrong format ({image}):\n - {sl}")
+                    print(f"Annotation has wrong format..skipping ({image}):\n - {sl}")
                     continue
 
                 if cl in config.classes:
