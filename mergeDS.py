@@ -29,10 +29,13 @@ def Merge(config):
     for d in ['test','train','valid']:
         if config.verbose:
             print("***** STARTING ANALYSIS ({}) *****".format(d))
-        timages = {i:os.path.join(config.target,d,'labels',"{}.{}".format(i[:-4],'txt')) for i in os.listdir(os.path.join(config.target,d,'images'))}
         if config.perc < 1.0:
-            rk = random.choices(list(timages.keys()),k=round(config.perc*len(timages)))
-            timages = {z:timages[z] for z in rk}
+            full = os.listdir(os.path.join(config.target,d,'images'))
+            timages = {i:os.path.join(config.target,d,'labels',"{}.{}".format(i[:-4],'txt')) for i in random.choices(full,k=round(config.perc*len(full)))}
+            print(" --  IMAGES selected: {} from {}".format(len(timages),len(full)))
+        else:
+            timages = {i:os.path.join(config.target,d,'labels',"{}.{}".format(i[:-4],'txt')) for i in os.listdir(os.path.join(config.target,d,'images'))}
+        
         destination = os.path.join(config.base,d,"images")
 
         #Selected images will be added to base dataset if they belong to the desired class (in config.synms)
