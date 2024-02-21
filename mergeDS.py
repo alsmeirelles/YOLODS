@@ -35,7 +35,7 @@ def Merge(config):
             print(" --  IMAGES selected: {} from {}".format(len(timages),len(full)))
         else:
             timages = {i:os.path.join(config.target,d,'labels',"{}.{}".format(i[:-4],'txt')) for i in os.listdir(os.path.join(config.target,d,'images'))}
-        
+
         destination = os.path.join(config.base,d,"images")
 
         #Selected images will be added to base dataset if they belong to the desired class (in config.synms)
@@ -53,24 +53,25 @@ def Merge(config):
                 if cl in config.classes:
                     if dest_annotations is None:
                         dest_annotations = open(os.path.join(config.base,d,"labels",os.path.basename(timages[image])),"w")
-
+                        shutil.copy(os.path.join(config.target,d,"images",image),os.path.join(config.base,d,"images")) #copy image to base set
                     if config.verbose:
                         print("Converting class {} from target to class {} in base set".format(cl,config.classes[cl]))
                     dest_cl = base_service["names"].index(config.classes[cl])
                     sl[0] = str(dest_cl) #Assign class index from base set to the synonym
 
                     dest_annotations.write(' '.join(sl))
-                    shutil.copy(os.path.join(config.target,d,"images",image),os.path.join(config.base,d,"images")) #copy image to base set
+
                 elif config.bground:
                     if dest_annotations is None:
                         dest_annotations = open(os.path.join(config.base,d,"labels",os.path.basename(timages[image])),"w")
+                        shutil.copy(os.path.join(config.target,d,"images",image),os.path.join(config.base,d,"images")) #copy image to base set
                     if config.verbose:
                         print("Adding original class {} from target as background in base set".format(cl))
-                    shutil.copy(os.path.join(config.target,d,"images",image),os.path.join(config.base,d,"images")) #copy image to base set
                     bgcount += 1
 
             if not dest_annotations is None:
                 dest_annotations.close()
+
     if config.bground:
         print(f"Total of background added: {bgcount}")
 
