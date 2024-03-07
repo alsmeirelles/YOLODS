@@ -79,8 +79,9 @@ if __name__ == "__main__":
 
     #Parse input parameters
     arg_groups = []
-    synms = {"gun":"Gun","guns":"Gun","pistol":"Gun","handgun":"Gun","rifle":"Gun","knife":"Knife","steel arms":"Knife"}
-
+    synms = {"gun":"Gun","guns":"Gun","pistol":"Gun","handgun":"Gun","rifle":"Gun","firegun":"Gun","knife":"Knife","steel arms":"Knife"}
+    #synms = {"gun":"Rifle","guns":"Handgun","pistol":"Handgun","handgun":"Handgun","rifle":"Rifle","knife":"Knife","steel arms":"Knife"}
+   
     parser = argparse.ArgumentParser(description='Merge YoLo format datasets into one\
         dataset.')
     parser.add_argument('-p', dest='perc', type=float,
