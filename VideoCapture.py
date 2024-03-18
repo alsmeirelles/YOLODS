@@ -6,10 +6,10 @@ import os
 import sys
 import numpy as np
 import cv2
-    
+import argparse
+
 #Yolo
-import kerasyolo3
-from kerasyolo3.yolo import YOLO
+from ultralytics import YOLO as yolo
 
 def run_frame_extraction(config):
     """
@@ -19,7 +19,7 @@ def run_frame_extraction(config):
     """
     extracted_frames = 0
     analyzed_videos = 0
-    
+
     #Searches for known video files in source directory
     extensions = ['mp4','avi']
 
@@ -37,7 +37,7 @@ def run_frame_extraction(config):
         last_img = dst_imgs[-1]
     else:
         last_img = 0
-    
+
     if os.path.isfile(config.mclasses):
         classes_path = config.mclasses
     else:
@@ -60,7 +60,7 @@ def run_frame_extraction(config):
         "gpu_num" : config.gpu_count}
 
     predictor = YOLO(**pred_args)
-    
+
     input_files = os.listdir(config.data)
     for f in input_files:
         if config.info:
@@ -111,6 +111,22 @@ def _run_extractor(predictor,video_path,dst_dir,frame_interval,frame_count,last_
         else:
             fcount += frame_interval
             print("Steping to frame {}".format(fcount))
-            
+
     vid.release()
     return extracted
+
+if __name__ == "__main__":
+
+    #Parse input parameters
+    arg_groups = []
+    parser = argparse.ArgumentParser(description='Extract frames to be used to train an YOLO model .')
+
+    parser.add_argument('-vdata', dest='vdata', type=str, default='',
+        help='Location of video files.',required=True)
+    parser.add_argument('-fdata', dest='fdata', type=str, default='',
+        help='Location of annotation files.',required=True)
+
+
+    config, unparsed = parser.parse_known_args()
+
+    run_frame_extraction(config)
