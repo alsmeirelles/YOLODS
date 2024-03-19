@@ -10,7 +10,7 @@ def train(config):
     device = torch.device(device)
     model.to(device)
 
-    results = model.train(data=config.data,epochs=config.epochs,batch=config.batch,optimizer="Adam",lr0=0.001,imgsz=640,save=True,save_period=5, workers=8)
+    results = model.train(data=config.data,epochs=config.epochs,batch=config.batch,optimizer="Adam",lr0=0.001,imgsz=640,save=True,save_period=2, workers=8)
     sucess = model.export()
 
 if __name__ == "__main__":
