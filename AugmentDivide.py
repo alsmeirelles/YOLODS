@@ -16,6 +16,7 @@ import albumentations as A
 import random
 import json
 import uuid
+import shutil
 
 from matplotlib import pyplot as plt
 from typing import Tuple
@@ -131,29 +132,32 @@ def visualize(image, bboxes, category_ids, category_id_to_name):
     plt.imshow(img)
     plt.show()
 
-def apply_transform(data,transform,dest,impath,lbpath,imsize,classes,debug=False):
+def apply_transform(data,rounds,transform,dest,impath,lbpath,imsize,classes,debug=False):
 
     res = []
-    for i in data:
-        im = cv2.imread(os.path.join(impath,i))
-        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-        bbox,category_ids = read_bbox(os.path.join(lbpath,"{}.txt".format(i[:-4])))
+    for k in range(rounds):
+        for i in data:
+            im = cv2.imread(os.path.join(impath,i))
+            im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+            bbox,category_ids = read_bbox(os.path.join(lbpath,"{}.txt".format(i[:-4])))
 
-        if debug:
-            print("Previewing before resize....")
-            visualize(im,bbox,category_ids,config.classes)
+            if debug:
+                print("Previewing before resize....")
+                visualize(im,bbox,category_ids,config.classes)
 
-        tf = transform(image=im,bboxes=bbox,category_ids=category_ids)
-        res.append(tf)
+            tf = transform(image=im,bboxes=bbox,category_ids=category_ids)
+            res.append(tf)
 
-        if debug:
-            visualize(tf['image'],tf['bboxes'],category_ids,config.classes)
-        else:
-            #Write generated images to disk
-            fname = "{}-{}".format(i[:-4],uuid.uuid5(uuid.NAMESPACE_DNS,"GTIA-IC"))
-            with open(os.path.join(dest,f"{fname}.txt"),"w") as fd:
-                for bb,cid in zip(tf['bboxes'],tf['category_ids']):
-                    fd.readline(f"{cid} {bb}")
+            if debug:
+                visualize(tf['image'],tf['bboxes'],category_ids,config.classes)
+            else:
+                #Write generated images to disk
+                cur_uid = uuid.uuid4()
+                fname = "{}-{}".format(i[:-4],cur_uid)
+                with open(os.path.join(dest,f"{fname}.txt"),"w") as fd:
+                    for bb,cid in zip(tf['bboxes'],tf['category_ids']):
+                        fd.write("{} {}\n".format(int(cid)," ".join([str(coord) for coord in bb])))
+                cv2.imwrite(os.path.join(dest,f"{fname}.jpg"),cv2.cvtColor(tf["image"],cv2.COLOR_RGB2BGR))
 
 
     return res
@@ -170,39 +174,74 @@ def run_augmentation(config):
     category_id_to_name = config.classes
 
     if config.debug:
-        imgs = random.choices(imgs,k=config.dbs)
+        imgs = random.sample(imgs,k=config.dbs)
 
     #Transformtions to perform
     transform = A.Compose(
-        [A.RandomBrightnessContrast(brightness_limit=0.25,contrast_limit=0.25),
-        A.ToGray(p=0.3),
-        A.InvertImg(p=0.3),
-        A.Sequential([A.LongestMaxSize(max_size=max(config.tdim),interpolation=1,always_apply=True),
+        [A.Sequential([A.LongestMaxSize(max_size=max(config.tdim),interpolation=1,always_apply=True),
             A.PadIfNeeded(min_height=config.tdim[1],min_width=config.tdim[0],border_mode=0,value=(0,0,0),always_apply=True),
             A.RandomSizedBBoxSafeCrop(height=config.tdim[1],width=config.tdim[0],p=0.5)],p=1.0),
-        A.OneOrOther(first=A.OneOrOther(first=A.HorizontalFlip(p=0.3),second=A.VerticalFlip(p=0.3)),
-            second=A.Rotate(limit=(30,60),border_mode=cv2.BORDER_CONSTANT,value=(0,0,0),p=0.3))], #list of transformations
-        bbox_params = A.BboxParams(format="yolo",label_fields=['category_ids'],min_visibility=0.2,min_area=50),
+        A.OneOf([A.CLAHE(p=0.6),
+            A.RandomBrightnessContrast(brightness_limit=0.3,contrast_limit=0.3,p=0.6),
+            A.ToGray(p=0.3)]),
+        A.OneOrOther(
+            first=A.OneOrOther(first=A.HorizontalFlip(p=0.4),second=A.VerticalFlip(p=0.4)),
+            second=A.Rotate(limit=30,border_mode=cv2.BORDER_CONSTANT,value=(0,0,0),crop_border=False,p=0.4))], #list of transformations
+        bbox_params = A.BboxParams(format="yolo",label_fields=['category_ids'],min_visibility=0.25,min_area=512),
         p=1.0)
 
     if config.cpu > 1:
         from Multiprocess import multiprocess_run
-        r = multiprocess_run(apply_transform,(transform,config.dest,config.img,config.ann,config.tdim,config.classes,config.debug),
+        r = multiprocess_run(apply_transform,(config.rounds,transform,config.dest,config.img,config.ann,config.tdim,config.classes,config.debug),
             imgs,config.cpu,pbar=True,step_size=20,txt_label="Generating images")[0]
     else:
-        r = apply_transform(imgs,transform,config.dest,config.img,config.ann,config.tdim,config.classes,debug=config.debug)
+        r = apply_transform(imgs,config.rounds,transform,config.dest,config.img,config.ann,config.tdim,config.classes,debug=config.debug)
 
     #Distribute original and generated images to dataset
-    if not config.debug:
-        total = len(imgs) + len(r)
-        op = len(imgs)/total
+    if config.di:
+        oimgs = len(imgs)
+        total = oimgs + len(r)
+        print(f"Total of images: {total}")
 
-        #Test set
-        tssize = round(config.ptest*total)
-        from_imgs = round(op*tssize)
-        from_augm = tssize - from_imgs
+        #Test set distribution for augmented images
+        imgs = set(imgs)
+        if config.ptest > 0.0:
+            tssize = round(config.ptest*total)
+            tssize = oimgs if tssize > oimgs else tssize
+            ddir = os.path.join(config.dest,"test")
+            print(f"Test set size: {tssize}")
 
-    return r
+            #Original images for test set
+            rset = random.sample(sorted(imgs),k=tssize)
+            print(f"\n ****** Test set images from original ({len(rset)}): {rset}")
+            for i in rset:
+                shutil.copy(os.path.join(config.img,i),os.path.join(ddir,"images"))
+                shutil.copy(os.path.join(config.ann,"{}.txt".format(i[:-4])),os.path.join(ddir,"labels"))
+            imgs = imgs - set(rset)
+
+        #Distribute validation
+        if config.val > 0 and len(imgs) >= config.val:
+            rset = random.sample(sorted(imgs),k=config.val) if config.val < len(imgs) else imgs
+            ddir = os.path.join(config.dest,"valid")
+            print(f"\n ***** Validation set images ({config.val}): {rset}")
+            for i in rset:
+                shutil.copy(os.path.join(config.img,i),os.path.join(ddir,"images"))
+                shutil.copy(os.path.join(config.ann,"{}.txt".format(i[:-4])),os.path.join(ddir,"labels"))
+            imgs = imgs - set(rset)
+
+        #Distribute training images
+        rimgs = list(filter(lambda d: (d.endswith("jpg") or d.endswith("png")),os.listdir(config.dest)))
+        ddir = os.path.join(config.dest,"train")
+        print(f"\n ****** Training set images ({len(rimgs)+len(imgs)}): {rimgs}\n{imgs}")
+        for i in rimgs:
+            shutil.move(os.path.join(config.dest,i),os.path.join(ddir,"images"))
+            shutil.move(os.path.join(config.dest,"{}.txt".format(i[:-4])),os.path.join(ddir,"labels"))
+
+        for i in imgs:
+            shutil.copy(os.path.join(config.img,i),os.path.join(ddir,"images"))
+            shutil.copy(os.path.join(config.ann,"{}.txt".format(i[:-4])),os.path.join(ddir,"labels"))
+
+    return len(r)
 
 if __name__ == "__main__":
 
@@ -223,8 +262,12 @@ if __name__ == "__main__":
         help='Class names and IDs (should be a dictionary formatted as string).',required=False)
     parser.add_argument('-db', dest='debug', action='store_true',
         help='Run debugging procedures. Apply augmentation to a random set of 10 images.', default=False,required=False)
+    parser.add_argument('-di', dest='di', action='store_true',
+        help='Distribute augmented images to directories, following Yolo format.', default=False,required=False)
     parser.add_argument('-dbs', dest='dbs', type=int, default=10,
         help='Sample this many images for debugging (default=10).',required=False)
+    parser.add_argument('-r', dest='rounds', type=int, default=1,
+        help='Run this many augmentation rounds (default=1).',required=False)
     parser.add_argument('-tdim', dest='tdim', nargs='+', type=int,
         help='Default width and heigth, all images will be resized to this.',
         default=(640,640), metavar=('Width', 'Height'))
@@ -243,5 +286,16 @@ if __name__ == "__main__":
         sys.exit()
     if not os.path.isdir(config.dest):
         os.mkdir(config.dest)
+        os.mkdir(os.path.join(config.dest,"train"))
+        os.mkdir(os.path.join(config.dest,"train","images"))
+        os.mkdir(os.path.join(config.dest,"train","labels"))
+
+        os.mkdir(os.path.join(config.dest,"test"))
+        os.mkdir(os.path.join(config.dest,"test","images"))
+        os.mkdir(os.path.join(config.dest,"test","labels"))
+
+        os.mkdir(os.path.join(config.dest,"valid"))
+        os.mkdir(os.path.join(config.dest,"valid","images"))
+        os.mkdir(os.path.join(config.dest,"valid","labels"))
 
     res = run_augmentation(config)
