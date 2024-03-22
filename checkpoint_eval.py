@@ -18,29 +18,7 @@ ultralytics.checks()
 
 from ultralytics import YOLO
 
-"""## CLI Basics
-
-If you want to train, validate or run inference on models and don't need to make any modifications to the code, using YOLO command line interface is the easiest way to get started. Read more about CLI in [Ultralytics YOLO Docs](https://docs.ultralytics.com/usage/cli/).
-
-```
-yolo task=detect    mode=train    model=yolov8n.yaml      args...
-          classify       predict        yolov8n-cls.yaml  args...
-          segment        val            yolov8n-seg.yaml  args...
-                         export         yolov8n.pt        format=onnx  args...
-```
-"""
-
-# Commented out IPython magic to ensure Python compatibility.
-# %cd {HOME}
-save_dir='runs/detect/train13'
-
-#!yolo task=detect mode=train model=yolov8l.pt data='.datasets/sptz-ger8/data.yaml' \
-#        epochs=100 imgsz=1280 batch=8 plots=True save=True save_period=1 save_dir=save_dir
-
-#batch=8
-#imgz=544
-
-train_name = 'train'
+save_dir = 'runs/detect/train18'
 
 """## Validate"""
 
@@ -53,7 +31,7 @@ modelos.sort()
 
 for modelo in modelos:
   print('==========',modelo,'==========',flush=True)
-  os.system(f"yolo task=detect mode=val conf=0.5 model={modelo} data=sptz.yaml project=sptz name=detect")
+  os.system(f"yolo task=detect mode=val conf=0.5 model={modelo} data=merged4.yaml project=sptz name=detect")
 
 # Commented out IPython magic to ensure Python compatibility.
 # %cd {HOME}
@@ -64,7 +42,6 @@ modelos.sort()
 
 for modelo in modelos:
   print('==========',modelo,'==========',flush=True)
-  os.system(f"yolo task=detect mode=val conf=0.4 model={modelo} data=sptz.yaml project=sptz name=detect")
+  os.system(f"yolo task=detect mode=val conf=0.4 model={modelo} data=merged4.yaml project=sptz name=detect")
 
 
-#!yolo task=detect mode=val conf=0.3 model=/content/runs/detect/train/weights/epoch67.pt data=/content/drive/MyDrive/datasets/sptz/data.yaml

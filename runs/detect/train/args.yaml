@@ -1,11 +1,11 @@
 task: detect
 mode: train
 model: yolov8n.pt
-data: WeaponDetection.yaml
+data: data.yaml
 epochs: 100
 time: null
 patience: 50
-batch: 64
+batch: 128
 imgsz: 640
 save: true
 save_period: -1

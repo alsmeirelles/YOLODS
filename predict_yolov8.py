@@ -77,19 +77,19 @@ def predict(config):
             labels = fd.readlines()
         if not labels:
             continue
-            
+
         #Generate an ndarray from labels
         gtr = [l.strip().split(' ') for l in labels]
         gtr = np.array([gtr]).astype(np.float32)
         y.extend(gtr[:,:1].T[0])
         pred.extend(r.boxes.conf)
 
-        if config.verbose:
-            print(f"fpr: {fpr}; tpr: {tpr}; thresh: {thresh}")
-
         box_check(gtr,r.boxes.xyxy,r.boxes.cls,r.orig_shape,verbose=config.verbose)
 
     fpr,tpr,thresh = metrics.roc_curve(y,pred,pos_label=0)
+
+    if config.verbose:
+        print(f"fpr: {fpr}; tpr: {tpr}; thresh: {thresh}")
 
 if __name__ == "__main__":
 
