@@ -20,7 +20,7 @@ module load cuda/11.7.1
 echo '[START] training'
 date +"%D %T"
 
-time python train_yolov8.py -ep 100 -bs 128 -data merged5.yaml -model yolov8m.pt -gpus 2
+time python train_yolov8.py -ep 100 -bs 96 -data merged5.yaml -model yolov8l.pt -gpus 2
 
 echo '[FINAL] done training'
 
