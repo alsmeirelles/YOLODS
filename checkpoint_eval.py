@@ -18,7 +18,7 @@ ultralytics.checks()
 
 from ultralytics import YOLO
 
-save_dir = 'runs/detect/train18'
+save_dir = 'runs/detect/train19'
 
 """## Validate"""
 
@@ -31,7 +31,7 @@ modelos.sort()
 
 for modelo in modelos:
   print('==========',modelo,'==========',flush=True)
-  os.system(f"yolo task=detect mode=val conf=0.5 model={modelo} data=merged4.yaml project=sptz name=detect")
+  os.system(f"yolo task=detect mode=val conf=0.5 model={modelo} data=merged5.yaml project=sptz name=detect")
 
 # Commented out IPython magic to ensure Python compatibility.
 # %cd {HOME}
@@ -42,6 +42,6 @@ modelos.sort()
 
 for modelo in modelos:
   print('==========',modelo,'==========',flush=True)
-  os.system(f"yolo task=detect mode=val conf=0.4 model={modelo} data=merged4.yaml project=sptz name=detect")
+  os.system(f"yolo task=detect mode=val conf=0.4 model={modelo} data=merged5.yaml project=sptz name=detect")
 
 
