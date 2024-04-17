@@ -7,7 +7,51 @@ import sys
 import cv2
 import argparse
 import random
+from tqdm import tqdm
 
+from decord import VideoReader
+from decord import cpu, gpu
+
+#Searches for known video files in source directory
+extensions = ['mp4','avi']
+def run_annotated_frame_extraction(config: argparse.Namespace):
+    """
+    @param config: argparse.Namespace configuration object
+    @return: number of extracted frames
+    """
+    extracted_frames = 0
+    analyzed_videos = 0
+
+    if os.path.isdir(config.vdata):
+        input_files = list(filter(lambda x: x.split('.')[1] in extensions, os.listdir(config.vdata)))
+    else:
+        return 0
+
+    bar = tqdm(desc="Processing video files...\n", total=len(os.listdir(config.frames)), position=0)
+    for f in input_files:
+        fpath = os.path.join(config.frames, "{}.txt".format(f[:-4]))
+        vpath = os.path.join(config.vdata, f)
+        if not os.path.isfile(fpath):
+            if config.verbose > 0:
+                print(f"Skipping {f}, no annotation file found.")
+            continue
+        with open(fpath, "r") as fd:
+            fns = fd.readlines()
+        video_name = os.path.basename(vpath)[:-4]
+        # vid = cv2.VideoCapture(vpath)
+        vid = VideoReader(vpath, ctx=cpu(0))
+        if config.verbose > 0:
+            print(f"Video frame count: {len(vid)}")
+            print(f"Video file: {video_name}")
+        for line in fns:
+            frame = line.strip().split(' ')
+            if len(frame) < 2:
+                continue
+            frame = (int(frame[0]), int(frame[1]))
+            read = list(range(max(0, frame[0]-config.nb), min(frame[0]+config.nb+1, len(vid))))
+            for findex in read:
+                cv2.imwrite(os.path.join(config.out, '{}-{}_{}.jpg'.format(video_name, findex, frame[1])), vid[findex].asnumpy())
+        bar.update(1)
 
 # noinspection PyTypeChecker
 def run_frame_extraction(config: argparse.Namespace):
@@ -19,9 +63,6 @@ def run_frame_extraction(config: argparse.Namespace):
     extracted_frames = 0
     analyzed_videos = 0
 
-    #Searches for known video files in source directory
-    extensions = ['mp4','avi']
-
     input_files = None
     #Check data source
     if os.path.isfile(config.fdata):
@@ -29,14 +70,13 @@ def run_frame_extraction(config: argparse.Namespace):
     elif os.path.isdir(config.vdata):
         input_files = list(filter(lambda x: x.split('.')[1] in extensions, os.listdir(config.vdata)))
     else:
-        print("Video data not found.")
+        print(f"Video data not found in {config.vdata}.")
         sys.exit(1)
 
     if config.cpu > 1 and len(input_files) > 1:
         from concurrent.futures import ThreadPoolExecutor
-        from tqdm import tqdm
 
-        bar = tqdm(desc="Processing video files...", total=len(input_files), position=0)
+        bar = tqdm(desc="Processing video files...\n", total=len(input_files), position=0)
         with ThreadPoolExecutor(max_workers=config.cpu) as executor:
             videos = {executor.submit(_run_extractor,
                                       os.path.join(config.vdata, f),
@@ -86,7 +126,7 @@ def _run_extractor(video_path:str, dst_dir:str, nfps:int, verbosity:int = 0):
             if ret:
                 cv2.imwrite(os.path.join(dst_dir, '{}-{}.jpg'.format(video_name, j)), frame)
                 extracted += 1
-            else:
+            elif verbosity > 1:
                 print("Error reading frame {} from video {}".format(j, video_path))
         fcount += fps
 
@@ -103,8 +143,12 @@ if __name__ == "__main__":
         help='Path to folder containing video files.',required=False)
     parser.add_argument('-fdata', dest='fdata', type=str, default='',
         help='Path to a specific video file.',required=False)
+    parser.add_argument('-frames', dest='frames', type=str, default='',
+        help='Path to dir that has .txt files with frame numbers to extract.',required=False)
     parser.add_argument('-out', dest='out', type=str, default='',
         help='Save frames here.',required=True)
+    parser.add_argument('-nb',dest='nb', type=int, default=1,
+        help='Combined with frame number annotation, extract nb frames before and after).')
     parser.add_argument('-ns',dest='ns', type=int, default=3,
         help='Extract this many frames per second (Set to zero for all).')
     parser.add_argument('-cpu', dest='cpu', type=int, default=1,
@@ -117,4 +161,7 @@ if __name__ == "__main__":
         print('You should define a path to a dir (vdata) or file (fdata)')
         sys.exit(1)
 
-    run_frame_extraction(config)
+    if config.frames:
+        run_annotated_frame_extraction(config)
+    else:
+        run_frame_extraction(config)
