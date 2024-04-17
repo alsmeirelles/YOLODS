@@ -20,6 +20,10 @@ def Merge(config):
     ybase = list(filter(lambda d: d.endswith("yaml"),os.listdir(config.base)))
     ytarget = list(filter(lambda d: d.endswith("yaml"),os.listdir(config.target)))
 
+    if not ybase or not ytarget:
+        print("No YAML descriptor found, exiting")
+        return
+
     with open(os.path.join(config.base,ybase[0]),'r') as f:
         base_service = yaml.safe_load(f)
     with open(os.path.join(config.target,ytarget[0]),'r') as f:
@@ -43,6 +47,13 @@ def Merge(config):
             with open(timages[image],"r") as ann:
                 annotations = ann.readlines()
             dest_annotations = None
+            if len(annotations) == 0:
+                print(f"Keeping backround image: {image}")
+                dest_annotations = open(os.path.join(config.base,d,"labels",os.path.basename(timages[image])),"w")
+                shutil.copy(os.path.join(config.target,d,"images",image),os.path.join(config.base,d,"images")) #copy image to base set
+                bgcount += 1
+                continue
+
             for line in annotations:
                 sl = line.split(' ')
                 cl = target_service["names"][int(sl[0])].lower()
@@ -79,8 +90,8 @@ if __name__ == "__main__":
 
     #Parse input parameters
     arg_groups = []
-    synms = {"gun":"Gun","guns":"Gun","pistol":"Gun","handgun":"Gun","rifle":"Gun","firegun":"Gun","knife":"Knife","steel arms":"Knife"}
-    #synms = {"gun":"Rifle","guns":"Handgun","pistol":"Handgun","handgun":"Handgun","rifle":"Rifle","knife":"Knife","steel arms":"Knife"}
+    synms = {"gun":"Weapon","guns":"Weapon","pistol":"Weapon","handgun":"Weapon","rifle":"Weapon","firegun":"Weapon","knife":"Weapon","steel arms":"Weapon", "dangerous weapon":"Weapon","weapon":"Weapon"}
+    #synms = {"gun":"Gun","guns":"Gun","pistol":"Gun","handgun":"Gun","rifle":"Gun","firegun":"Gun","knife":"Knife","steel arms":"Knife"}
    
     parser = argparse.ArgumentParser(description='Merge YoLo format datasets into one\
         dataset.')

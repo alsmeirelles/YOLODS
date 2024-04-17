@@ -30,42 +30,6 @@ yolo task=detect    mode=train    model=yolov8n.yaml      args...
 ```
 """
 
-# !mkdir {HOME}/datasets
-# %cd {HOME}/datasets
-
-# !pip install roboflow --quiet
-
-# !pip install roboflow
-# from roboflow import Roboflow
-# rf = Roboflow(api_key="psIqDVliEBxqttfL5g9G")
-# project = rf.workspace("leandro-dias-carneiro-yvdut").project("lbiof_espermatozoides")
-# dataset = project.version(1).download("yolov5")
-
-# !pip install roboflow
-# from roboflow import Roboflow
-# rf = Roboflow(api_key="psIqDVliEBxqttfL5g9G")
-# project = rf.workspace("leandro-dias-carneiro-yvdut").project("lbiof_espermatozoides_v1")
-# dataset = project.version(2).download("yolov8")
-
-# !pip install roboflow
-# from roboflow import Roboflow
-# rf = Roboflow(api_key="psIqDVliEBxqttfL5g9G")
-# project = rf.workspace("leandro-dias-carneiro-yvdut").project("lbiof_espermatozoides_v1")
-# dataset = project.version(5).download("yolov8")
-
-# #no data aug
-# from roboflow import Roboflow
-# rf = Roboflow(api_key="psIqDVliEBxqttfL5g9G")
-# project = rf.workspace("leandro-dias-carneiro-yvdut").project("lbiof_espermatozoides_v2")
-# dataset = project.version(1).download("yolov8")
-
-
-# #512 data aug
-# from roboflow import Roboflow
-# rf = Roboflow(api_key="psIqDVliEBxqttfL5g9G")
-# project = rf.workspace("leandro-dias-carneiro-yvdut").project("lbiof_espermatozoides_v2")
-# dataset = project.version(3).download("yolov8")
-
 # Commented out IPython magic to ensure Python compatibility.
 # %cd {HOME}
 save_dir='runs/detect/train13'
