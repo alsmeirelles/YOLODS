@@ -23,7 +23,7 @@ def run_annotated_frame_extraction(config: argparse.Namespace):
     analyzed_videos = 0
 
     if os.path.isdir(config.vdata):
-        input_files = list(filter(lambda x: x.split('.')[1] in extensions, os.listdir(config.vdata)))
+        input_files = list(filter(lambda x: x.split('.')[-1] in extensions, os.listdir(config.vdata)))
     else:
         return 0
 
@@ -39,7 +39,7 @@ def run_annotated_frame_extraction(config: argparse.Namespace):
             fns = fd.readlines()
         video_name = os.path.basename(vpath)[:-4]
         # vid = cv2.VideoCapture(vpath)
-        vid = VideoReader(vpath, ctx=cpu(0))
+        vid = VideoReader(vpath, ctx=gpu(0))
         if config.verbose > 0:
             print(f"Video frame count: {len(vid)}")
             print(f"Video file: {video_name}")
@@ -68,7 +68,7 @@ def run_frame_extraction(config: argparse.Namespace):
     if os.path.isfile(config.fdata):
         input_files = [config.fdata]
     elif os.path.isdir(config.vdata):
-        input_files = list(filter(lambda x: x.split('.')[1] in extensions, os.listdir(config.vdata)))
+        input_files = list(filter(lambda x: x.split('.')[-1] in extensions, os.listdir(config.vdata)))
     else:
         print(f"Video data not found in {config.vdata}.")
         sys.exit(1)
@@ -83,9 +83,8 @@ def run_frame_extraction(config: argparse.Namespace):
                                       config.out,
                                       config.ns,
                                       config.verbose,
-                                      ): f for f in input_files}
+                                      ).add_done_callback(lambda x:bar.update(1)): f for f in input_files}
         for task in concurrent.futures.as_completed(videos):
-            bar.update(1)
             extracted_frames += task.result()
             analyzed_videos += 1
     else:
@@ -113,12 +112,13 @@ def _run_extractor(video_path:str, dst_dir:str, nfps:int, verbosity:int = 0):
     vid_frames = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = int(vid.get(cv2.CAP_PROP_FPS))
     if verbosity >= 1:
-        print(f"Total frames in video: {vid_frames}; {fps} FPS")
+        print(f"\nTotal frames in video: {vid_frames}; {fps} FPS")
 
     fcount = 0
     extracted = 0
     while fcount < vid_frames:
-        fi = random.sample(range(fcount, min(fcount+fps, vid_frames)), k=nfps)
+        pop = range(fcount, min(fcount+fps, vid_frames))
+        fi = random.sample(pop, k=nfps) if len(pop) > nfps else pop
 
         for j in fi:
             vid.set(cv2.CAP_PROP_POS_FRAMES, j)
