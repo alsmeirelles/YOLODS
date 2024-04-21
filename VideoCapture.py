@@ -70,20 +70,24 @@ def run_frame_extraction(config: argparse.Namespace):
     elif os.path.isdir(config.vdata):
         input_files = list(filter(lambda x: x.split('.')[-1] in extensions, os.listdir(config.vdata)))
     else:
-        print(f"Video data not found in {config.vdata}.")
+        print(f"Video data not found in {config.vdata}{config.fdata}.")
         sys.exit(1)
 
     if config.cpu > 1 and len(input_files) > 1:
         from concurrent.futures import ThreadPoolExecutor
 
         bar = tqdm(desc="Processing video files...\n", total=len(input_files), position=0)
+        videos = {}
         with ThreadPoolExecutor(max_workers=config.cpu) as executor:
-            videos = {executor.submit(_run_extractor,
-                                      os.path.join(config.vdata, f),
+            for f in input_files:
+                ex = executor.submit(_run_extractor,
+                                          os.path.join(config.vdata, f),
                                       config.out,
                                       config.ns,
-                                      config.verbose,
-                                      ).add_done_callback(lambda x:bar.update(1)): f for f in input_files}
+                                      config.verbose)
+                ex.add_done_callback(lambda x:bar.update(1))
+                videos[ex] = f
+            
         for task in concurrent.futures.as_completed(videos):
             extracted_frames += task.result()
             analyzed_videos += 1
@@ -103,14 +107,13 @@ def _run_extractor(video_path:str, dst_dir:str, nfps:int, verbosity:int = 0):
     Runs extraction
     """
     random.seed()
-    vid = cv2.VideoCapture(video_path)
-    if not vid.isOpened():
-        print("Video could not be opened: {}".format(video_path))
-        return 0
+
+    with open(video_path,"rb") as v:
+        vid = VideoReader(v, ctx=cpu(0))
 
     video_name = os.path.basename(video_path)[:-4]
-    vid_frames = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
-    fps = int(vid.get(cv2.CAP_PROP_FPS))
+    vid_frames = len(vid) #int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = int(vid.get_avg_fps())
     if verbosity >= 1:
         print(f"\nTotal frames in video: {vid_frames}; {fps} FPS")
 
@@ -121,16 +124,12 @@ def _run_extractor(video_path:str, dst_dir:str, nfps:int, verbosity:int = 0):
         fi = random.sample(pop, k=nfps) if len(pop) > nfps else pop
 
         for j in fi:
-            vid.set(cv2.CAP_PROP_POS_FRAMES, j)
-            ret, frame = vid.read()
-            if ret:
-                cv2.imwrite(os.path.join(dst_dir, '{}-{}.jpg'.format(video_name, j)), frame)
-                extracted += 1
-            elif verbosity > 1:
-                print("Error reading frame {} from video {}".format(j, video_path))
+            cv2.imwrite(os.path.join(dst_dir, '{}-{}.jpg'.format(video_name, j)), cv2.cvtColor(vid[j].asnumpy(),cv2.COLOR_BGR2RGB))
+            extracted += 1
+            
         fcount += fps
 
-    vid.release()
+    #vid.release()
     return extracted
 
 if __name__ == "__main__":
